@@ -1,0 +1,111 @@
+---
+title: "BLI studies showed VWF Propeptide self-association through D2 domain"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---  
+```{r}
+require(ggplot2)
+```
+
+```{r, fig.height=6, fig.width=6}
+# read the data 120420B
+# channel B5: sensor=biotin-D1D2/8 micro-mole D1D2 in solusion
+# channel C5: sensor=biotin-D1  /8 micro-mole D1D2
+# channel D5: sensor=biotin-D2  /8 micro-mole D1D2
+filePattern <- "RH120420B"
+dirpath <- system.file("extdata", package = "blidata")
+filelist <- file.path(dirpath,list.files(dirpath,pattern=filePattern))
+datnames <- sapply(list.files(dirpath,pattern=filePattern),
+                   simplify=TRUE, USE.NAMES=FALSE,
+                   function(x) tools::file_path_sans_ext(x))
+len <- length(datnames)
+dats <- lapply(filelist, function(file){
+    dat <- read.delim(file, skip=4, header=TRUE, sep="\t")})
+dats <- setNames(dats,datnames)
+
+plots <- sapply(dats, simplify=FALSE, function(dat){
+    g <- radii:::ggplot()
+    g <- g + geom_line(data=dat, aes(x=Time1,y=Data1))
+    g <- g + xlab("Time (sec)") + ylab("R (nm)")
+    g <- g + ggtitle("")
+    g
+})
+
+# for (i in seq(1,6,by=2)) {
+#     ggsave(filename=paste0("Fig01_",i,"s3.tiff"), 
+#            plot=plots[[i]], dpi=300,
+#            device="tiff", width=3,height=3 )}
+```
+
+```{r}
+# plot the second curve in the data
+plots <- lapply(dats, function(dat){
+    g <- radii:::ggplot()
+    g <- g + geom_line(data=dat, aes(x=Time2, y=Data2))
+    # print(g)
+    g
+})
+```
+
+```{r}
+# read the data 120615A
+# channel A: control=biotin-BSA
+# channel B: sensor =1 uM biotin-D2/D2, conc=0.16,,0.48,1.44,4.33,13uM
+# channel C: sensor =2 uM biotin-D1/D2, conc=0.16,,0.48,1.44,4.33,13uM
+filePattern <- "RH120615A"
+dirpath <- system.file("extdata", package = "blidata")
+filelist <- file.path(dirpath,list.files(dirpath,pattern=filePattern))
+datnames <- sapply(list.files(dirpath,pattern=filePattern),
+                   simplify=TRUE, USE.NAMES=FALSE,
+                   function(x) tools::file_path_sans_ext(x))
+len <- length(datnames)
+dats <- lapply(filelist, function(file){
+    # clean up the column name for the table
+    colName <- read.delim(file, skip=1, nrow=1,header=F)
+    colName <- colName[!is.na(colName)][-1]
+    colName <- c("Time",paste(sprintf("%.3g",as.numeric(colName)*1e6)))
+    
+    # read the table
+    dat <- read.delim(file, skip=4, header=TRUE, sep="\t")
+    
+    # clean up the table
+    colKeep <- c(1,grep("Data",names(dat)))
+    dat <- dat[colKeep]
+    names(dat) <- colName
+    
+    # return the dat table
+    return(dat)
+    })
+
+dats <- setNames(dats,datnames)
+plots <- sapply(dats,simplify=FALSE,USE.NAMES=FALSE,
+                function(dat){
+                    # melt: wide table --> long table
+                    dat <- reshape2::melt(data=dat,
+                                          id.vars = 1,
+                                          measure.vars = rev(2:ncol(dat)),
+                                          variable.name="conc")
+                    # draw the plot
+                    g <- radii:::ggplot()
+                    g <- g + geom_line(data=dat, aes(x=Time, y=value, col=conc))
+                    g <- g + xlab("Time (sec)") + ylab("R (nm)") + ylim(-0.01,NA)
+                    g
+                } )
+
+for (i in seq_along(plots)) {
+    ggsave(filename=paste0("Fig01b_",i,"s4.tiff"), 
+        plot=plots[[i]], dpi=300,
+        device="tiff", width=4,height=3 )
+}
+
+```
+
+
+
+
+
